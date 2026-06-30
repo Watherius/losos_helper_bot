@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: helper_bot_db
+    restart: always
+    environment:
+      POSTGRES_USER: helper_user
+      POSTGRES_PASSWORD: helper_password
+      POSTGRES_DB: helper_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helper_user -d helper_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: helper_bot_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: ./gateway-node
+      dockerfile: Dockerfile
+    container_name: helper_bot_gateway
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - BACKEND_URL=http://backend:8000/webhook
+    volumes:
+      - ./gateway-node/auth_info_baileys:/app/auth_info_baileys
+      - shared_media:/app/shared_media
+    depends_on:
+      - redis
+
+  backend:
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    container_name: helper_bot_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://helper_user:helper_password@db:5432/helper_db
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GATEWAY_URL=http://gateway:3000
+      - CONFIDENCE_THRESHOLD=0.7
+      - PYTHONUNBUFFERED=1
+      - BUFFER_TIMEOUT_SECONDS=0
+    volumes:
+      - shared_media:/app/shared_media
+      - ./backend-python/knowledge_base_docs:/app/knowledge_base_docs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
+  shared_media:
