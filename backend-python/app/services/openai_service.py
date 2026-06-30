@@ -9,7 +9,14 @@ from app.config import settings
 # Structured output schemas
 class AIResponse(BaseModel):
     response_text: str = Field(description="Ответ пользователю на основе предоставленных документов.")
-    confidence: float = Field(description="Уровень уверенности в ответе от 0.0 до 1.0 на основе соответствия базе знаний.")
+    confidence: float = Field(
+        description=(
+            "Уровень уверенности в ответе от 0.0 до 1.0 на основе соответствия базе знаний. "
+            "Установите значение строго меньше 0.5 (например, 0.0), если сообщение пользователя является приветствием, "
+            "флудом, оскорблением, бессмысленным набором слов, или не содержит конкретного вопроса, "
+            "на который в предоставленных документах базы знаний есть прямой ответ."
+        )
+    )
 
 PROMPT_FILE = "/app/knowledge_base_docs/prompt.txt"
 DEFAULT_PROMPT = (

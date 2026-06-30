@@ -296,6 +296,31 @@ async function connectToWhatsApp() {
           }
         }
 
+        // Clean bot's own mentions from text and caption
+        if (sock?.user) {
+          const botPhone = sock.user.id.split('@')[0].split(':')[0];
+          const botLid = (sock.user as any).lid ? (sock.user as any).lid.replace(/:.+@/, '@') : null;
+          const botLidPhone = botLid ? botLid.split('@')[0].split(':')[0] : null;
+
+          if (payload.text) {
+            let cleanedText = payload.text;
+            cleanedText = cleanedText.replace(new RegExp(`@${botPhone}\\b`, 'gi'), '');
+            if (botLidPhone) {
+              cleanedText = cleanedText.replace(new RegExp(`@${botLidPhone}\\b`, 'gi'), '');
+            }
+            payload.text = cleanedText.trim();
+          }
+
+          if (payload.caption) {
+            let cleanedCaption = payload.caption;
+            cleanedCaption = cleanedCaption.replace(new RegExp(`@${botPhone}\\b`, 'gi'), '');
+            if (botLidPhone) {
+              cleanedCaption = cleanedCaption.replace(new RegExp(`@${botLidPhone}\\b`, 'gi'), '');
+            }
+            payload.caption = cleanedCaption.trim();
+          }
+        }
+
         addLog(`Пересылка сообщения на бэкенд Python (webhook)...`);
         
         // Show composing (typing) status
@@ -552,32 +577,30 @@ server.get('/', async (request, reply) => {
         }
 
         .status-badge {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
             font-size: 0.8rem;
             font-weight: 600;
             padding: 0.35rem 0.75rem;
             border-radius: 50px;
             text-transform: uppercase;
+            white-space: nowrap;
         }
 
         .status-badge.connecting {
             background-color: rgba(245, 158, 11, 0.1);
             color: var(--warning);
-            border: 1px solid rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.25);
         }
 
         .status-badge.qr {
-            background-color: rgba(99, 102, 241, 0.1);
-            color: var(--primary);
-            border: 1px solid rgba(99, 102, 241, 0.2);
+            background-color: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc; /* Bright lavender-indigo text for readability */
+            border: 1px solid rgba(99, 102, 241, 0.35);
         }
 
         .status-badge.connected {
             background-color: rgba(16, 185, 129, 0.1);
             color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.25);
             box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
         }
 
@@ -848,14 +871,16 @@ server.get('/', async (request, reply) => {
         <!-- Левая колонка: Подключение и Настройки -->
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             <div class="card">
-                <div class="card-title">
-                    🌐 Статус подключения
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; width: 100%;">
+                    <div class="card-title">
+                        🌐 Статус подключения
+                    </div>
+                    <div class="status-badge connecting" id="status-badge">Подключение...</div>
                 </div>
                 <p class="card-description">
                     Здесь отображается текущее состояние соединения с WhatsApp. Если вы запускаете бота впервые, отсканируйте QR-код ниже через приложение WhatsApp.
                 </p>
                 <div class="status-container" id="status-box">
-                    <div class="status-badge connecting" id="status-badge">Подключение...</div>
                     
                     <!-- Спиннер загрузки -->
                     <div class="spinner" id="spinner"></div>

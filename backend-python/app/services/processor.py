@@ -166,22 +166,19 @@ async def process_message_job(chat_id: str, sender_id: str, messages_batch: List
 
         # 3. Retrieve user-specific history (segmented by chat_id AND sender_id)
         stmt = (
-            select(Message)
-            .where(Message.chat_id == chat_id, Message.sender_id == sender_id)
-            .order_by(Message.timestamp.desc())
-            .limit(10)
+            select(ResponseLog)
+            .where(ResponseLog.chat_id == chat_id, ResponseLog.sender_id == sender_id)
+            .order_by(ResponseLog.created_at.desc())
+            .limit(5)
         )
         res = await db.execute(stmt)
-        history_msgs = list(res.scalars().all())
-        history_msgs.reverse() # Back to chronological order
+        history_logs = list(res.scalars().all())
+        history_logs.reverse() # Back to chronological order
         
         history_formatted = []
-        for h in history_msgs:
-            # We don't want to include the current batch in history to avoid duplication
-            is_current_batch = any(h.wa_message_id == m.get("message_id") for m in messages_batch)
-            if is_current_batch:
-                continue
-            history_formatted.append({"role": "user", "content": h.text or ""})
+        for log in history_logs:
+            history_formatted.append({"role": "user", "content": log.user_query})
+            history_formatted.append({"role": "assistant", "content": log.response_text})
             
         # 4. Search Knowledge Base (RAG)
         kb_chunks = await rag_service.retrieve_similar_chunks(db, user_query)

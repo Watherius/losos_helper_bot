@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 from pydantic import Field
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = Field(default="postgresql+asyncpg://helper_user:helper_password@localhost:5432/helper_db")
+    DATABASE_URL: str = Field(default="postgresql+asyncpg://losos_helper_user:losos_helper_password@localhost:5432/losos_helper_db")
     REDIS_URL: str = Field(default="redis://localhost:6379/0")
     OPENAI_API_KEY: str = Field(default="")
     GATEWAY_URL: str = Field(default="http://localhost:3000")

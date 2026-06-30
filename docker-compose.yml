@@ -1,27 +1,27 @@
-version: '3.8'
+name: losos_helper_bot
 
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: helper_bot_db
+    container_name: losos_helper_bot_db
     restart: always
     environment:
-      POSTGRES_USER: helper_user
-      POSTGRES_PASSWORD: helper_password
-      POSTGRES_DB: helper_db
+      POSTGRES_USER: losos_helper_user
+      POSTGRES_PASSWORD: losos_helper_password
+      POSTGRES_DB: losos_helper_db
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U helper_user -d helper_db"]
+      test: ["CMD-SHELL", "pg_isready -U losos_helper_user -d losos_helper_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: helper_bot_redis
+    container_name: losos_helper_bot_redis
     restart: always
     ports:
       - "6379:6379"
@@ -37,7 +37,7 @@ services:
     build:
       context: ./gateway-node
       dockerfile: Dockerfile
-    container_name: helper_bot_gateway
+    container_name: losos_helper_bot_gateway
     restart: always
     ports:
       - "3000:3000"
@@ -54,12 +54,12 @@ services:
     build:
       context: ./backend-python
       dockerfile: Dockerfile
-    container_name: helper_bot_backend
+    container_name: losos_helper_bot_backend
     restart: always
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://helper_user:helper_password@db:5432/helper_db
+      - DATABASE_URL=postgresql+asyncpg://losos_helper_user:losos_helper_password@db:5432/losos_helper_db
       - REDIS_URL=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GATEWAY_URL=http://gateway:3000
