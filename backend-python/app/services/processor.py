@@ -2,7 +2,7 @@ import os
 import json
 import time
 import httpx
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 from sqlalchemy import select, or_
 from datetime import datetime
 
@@ -57,7 +57,7 @@ async def get_fallback_answer(db, query: str) -> str:
             
     return "Не удалось определить решение. Передаю вопрос специалисту."
 
-async def send_reply_to_whatsapp(chat_id: str, text: str, reply_to: str = None, mention_jid: str = None):
+async def send_reply_to_whatsapp(chat_id: str, text: str, reply_to: Optional[str] = None, mention_jid: Optional[str] = None):
     """
     Sends the response back to WhatsApp Gateway.
     """
@@ -102,8 +102,11 @@ async def process_message_job(chat_id: str, sender_id: str, messages_batch: List
             ts_str = msg.get("timestamp")
             # Parse ISO timestamp
             try:
-                dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                dt = dt.replace(tzinfo=None)
+                if ts_str:
+                    dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                    dt = dt.replace(tzinfo=None)
+                else:
+                    dt = datetime.now()
             except Exception:
                 dt = datetime.now()
 
@@ -136,23 +139,26 @@ async def process_message_job(chat_id: str, sender_id: str, messages_batch: List
             elif msg_type == "image":
                 file_path = msg.get("file_path")
                 caption = msg.get("caption", "")
-                desc = await openai_service.describe_image(file_path)
-                texts.append(f"[Изображение: {desc}]")
+                if file_path:
+                    desc = await openai_service.describe_image(file_path)
+                    texts.append(f"[Изображение: {desc}]")
                 if caption:
                     texts.append(caption)
             elif msg_type == "audio":
                 file_path = msg.get("file_path")
-                transcription = await openai_service.transcribe_audio(file_path)
-                texts.append(f"[Голосовое: {transcription}]")
+                if file_path:
+                    transcription = await openai_service.transcribe_audio(file_path)
+                    texts.append(f"[Голосовое: {transcription}]")
             elif msg_type == "document":
                 file_path = msg.get("file_path")
                 caption = msg.get("caption", "")
-                try:
-                    doc_content = rag_service.extract_text(file_path)
-                    # Limit to avoid token limit overflow
-                    texts.append(f"[Документ '{os.path.basename(file_path)}': {doc_content[:1500]}]")
-                except Exception as e:
-                    texts.append(f"[Ошибка извлечения текста из файла: {e}]")
+                if file_path:
+                    try:
+                        doc_content = rag_service.extract_text(file_path)
+                        # Limit to avoid token limit overflow
+                        texts.append(f"[Документ '{os.path.basename(file_path)}': {doc_content[:1500]}]")
+                    except Exception as e:
+                        texts.append(f"[Ошибка извлечения текста из файла: {e}]")
                 if caption:
                     texts.append(caption)
             elif msg_type == "reaction":
@@ -175,16 +181,16 @@ async def process_message_job(chat_id: str, sender_id: str, messages_batch: List
         history_logs = list(res.scalars().all())
         history_logs.reverse() # Back to chronological order
         
-        history_formatted = []
+        history_formatted: List[Dict[str, str]] = []
         for log in history_logs:
-            history_formatted.append({"role": "user", "content": log.user_query})
-            history_formatted.append({"role": "assistant", "content": log.response_text})
+            history_formatted.append({"role": "user", "content": str(log.user_query)})
+            history_formatted.append({"role": "assistant", "content": str(log.response_text)})
             
         # 4. Search Knowledge Base (RAG)
         kb_chunks = await rag_service.retrieve_similar_chunks(db, user_query)
         kb_texts = []
         for chunk in kb_chunks:
-            kb_texts.append(chunk.content_chunk)
+            kb_texts.append(str(chunk.content_chunk))
             knowledge_sources.append(chunk.filename)
             
         # Remove duplicate filenames

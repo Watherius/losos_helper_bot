@@ -47,7 +47,7 @@ class RAGService:
         """
         Splits text into chunks of specified size and overlap.
         """
-        chunks = []
+        chunks: List[str] = []
         if not text:
             return chunks
         

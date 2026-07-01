@@ -1,7 +1,7 @@
 import os
 import base64
 import time
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 from app.config import settings
@@ -132,7 +132,7 @@ class OpenAIService:
 
         context_str = "\n---\n".join([f"Документ:\n{chunk}" for chunk in kb_chunks])
         
-        messages = [
+        messages: List[Any] = [
             {"role": "system", "content": system_prompt},
         ]
         

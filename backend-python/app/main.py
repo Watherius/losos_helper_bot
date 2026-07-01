@@ -10,7 +10,7 @@ from app.redis_client import init_redis, close_redis
 from app.services.buffer import add_to_buffer
 from app.services.rag import rag_service
 from app.models import KnowledgeBase
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, Select
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -96,7 +96,7 @@ async def list_knowledge_base_files(db: AsyncSession = Depends(get_db)):
     List all distinct document filenames indexed in the knowledge base.
     """
     try:
-        stmt = select(KnowledgeBase.filename).distinct()
+        stmt: Select = select(KnowledgeBase.filename).distinct()
         result = await db.execute(stmt)
         files = result.scalars().all()
         return {"files": files}
